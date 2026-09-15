@@ -1,102 +1,291 @@
-function addAttendance() {
+// ==========================================
+// QR GENERATOR
+// ==========================================
 
-    let name = document.getElementById("name").value.trim();
-    let office = document.getElementById("office").value.trim();
-    let position = document.getElementById("position").value.trim();
 
-    if (name === "" || office === "" || position === "") {
-        alert("Please complete all fields.");
-        return;
-    }
+// ==========================================
+// GET DATE AND TIME
+// ==========================================
 
-    // Current date and time
+function getCurrentDateTime() {
+
     const now = new Date();
 
     const options = {
+
         year: "numeric",
+
         month: "long",
+
         day: "numeric",
+
         hour: "2-digit",
+
         minute: "2-digit",
+
         second: "2-digit",
+
         hour12: true
+
     };
 
-    const dateTime = now.toLocaleString("en-US", options);
-
-    // Display date and time
-    document.getElementById("datetime").value = dateTime;
-
-    // Add to table
-    const tbody = document.querySelector("#attendanceTable tbody");
-
-    const row = tbody.insertRow();
-
-    row.insertCell(0).textContent = name;
-    row.insertCell(1).textContent = office;
-    row.insertCell(2).textContent = position;
-    row.insertCell(3).textContent = dateTime;
-
-    saveAttendance(name, office, position, dateTime); 
-
-    // Clear the form
-    document.getElementById("name").value = "";
-    document.getElementById("office").value = "";
-    document.getElementById("position").value = "";
-    document.getElementById("datetime").value = "";
-
-    // Show popup
-    document.getElementById("successModal").style.display = "block";
+    return now.toLocaleString(
+        "en-US",
+        options
+    );
 }
 
-function closeModal() {
-    document.getElementById("successModal").style.display = "none";
-}
 
-// Close if clicked outside
-window.onclick = function(event) {
-    let modal = document.getElementById("successModal");
 
-    if (event.target === modal) {
-        modal.style.display = "none";
+// ==========================================
+// VALIDATE FORM
+// ==========================================
+
+function validateForm() {
+
+    const name =
+        document.getElementById("name")
+            .value.trim();
+
+    const office =
+        document.getElementById("office")
+            .value.trim();
+
+    const position =
+        document.getElementById("position")
+            .value.trim();
+
+
+    if (name === "") {
+
+        alert(
+            "Please enter the respondent's full name."
+        );
+
+        document.getElementById("name").focus();
+
+        return false;
     }
+
+
+    if (office === "") {
+
+        alert(
+            "Please enter the respondent's office."
+        );
+
+        document.getElementById("office").focus();
+
+        return false;
+    }
+
+
+    if (position === "") {
+
+        alert(
+            "Please enter the respondent's position."
+        );
+
+        document.getElementById("position").focus();
+
+        return false;
+    }
+
+
+    return true;
 }
 
-function downloadExcel() {
-   const table = document.getElementById("attendanceTable");
-    const rows = table.querySelectorAll("tbody tr");
 
-    if (rows.length === 0) {
-        alert("No attendance records to download yet.");
+
+// ==========================================
+// GENERATE QR
+// ==========================================
+
+function generateQR() {
+
+    if (!validateForm()) {
+
         return;
+
     }
 
-    const workbook = XLSX.utils.table_to_book(table, { sheet: "Attendance" });
-    const today = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(workbook, `Attendance_${today}.xlsx`);
 
-    // Clear the table and saved records after download
-    document.querySelector("#attendanceTable tbody").innerHTML = "";
-    localStorage.removeItem("attendanceRecords");
+    const name =
+        document.getElementById("name")
+            .value.trim();
+
+    const office =
+        document.getElementById("office")
+            .value.trim();
+
+    const position =
+        document.getElementById("position")
+            .value.trim();
+
+
+    const dateTime =
+        getCurrentDateTime();
+
+
+    // ======================================
+    // DATA INSIDE QR
+    // ======================================
+
+    const qrData = {
+
+        system:
+            "Smart Classroom Attendance",
+
+        name:
+            name,
+
+        office:
+            office,
+
+        position:
+            position,
+
+        dateTime:
+            dateTime
+
+    };
+
+
+    const qrText =
+        JSON.stringify(qrData);
+
+
+
+    // ======================================
+    // CLEAR PREVIOUS QR
+    // ======================================
+
+    const qrContainer =
+        document.getElementById("qrcode");
+
+    qrContainer.innerHTML = "";
+
+
+
+    // ======================================
+    // GENERATE QR
+    // ======================================
+
+    new QRCode(
+
+        qrContainer,
+
+        {
+
+            text: qrText,
+
+            width: 230,
+
+            height: 230,
+
+            correctLevel:
+                QRCode.CorrectLevel.H
+
+        }
+
+    );
+
+
+
+    // ======================================
+    // DISPLAY INFORMATION
+    // ======================================
+
+    document.getElementById("qrName")
+        .textContent = name;
+
+    document.getElementById("qrOffice")
+        .textContent = office;
+
+    document.getElementById("qrPosition")
+        .textContent = position;
+
+    document.getElementById("qrDate")
+        .textContent = dateTime;
+
+
+
+    // ======================================
+    // SHOW QR RESULT
+    // ======================================
+
+    document.getElementById(
+        "qrPlaceholder"
+    ).style.display = "none";
+
+
+    document.getElementById(
+        "qrResult"
+    ).style.display = "block";
+
+
+
+    // ======================================
+    // QR COUNTER
+    // ======================================
+
+    let qrCount =
+        Number(
+            localStorage.getItem(
+                "qrGenerated"
+            )
+        ) || 0;
+
+
+    qrCount++;
+
+
+    localStorage.setItem(
+        "qrGenerated",
+        qrCount
+    );
+
 }
 
-window.addEventListener("DOMContentLoaded", loadAttendance);
 
-function loadAttendance() {
-    const records = JSON.parse(localStorage.getItem("attendanceRecords")) || [];
-    const tbody = document.querySelector("#attendanceTable tbody");
 
-    records.forEach(record => {
-        const row = tbody.insertRow();
-        row.insertCell(0).textContent = record.name;
-        row.insertCell(1).textContent = record.office;
-        row.insertCell(2).textContent = record.position;
-        row.insertCell(3).textContent = record.dateTime;
-    });
-}
+// ==========================================
+// DOWNLOAD QR
+// ==========================================
 
-function saveAttendance(name, office, position, dateTime) {
-    const records = JSON.parse(localStorage.getItem("attendanceRecords")) || [];
-    records.push({ name, office, position, dateTime });
-    localStorage.setItem("attendanceRecords", JSON.stringify(records));
+function downloadQR() {
+
+    const qrContainer =
+        document.getElementById("qrcode");
+
+
+    const canvas =
+        qrContainer.querySelector("canvas");
+
+
+    if (!canvas) {
+
+        alert(
+            "Please generate a QR code first."
+        );
+
+        return;
+
+    }
+
+
+    const link =
+        document.createElement("a");
+
+
+    link.download =
+        "SmartClassroom_Attendance_QR.png";
+
+
+    link.href =
+        canvas.toDataURL("image/png");
+
+
+    link.click();
+
 }
